@@ -1,8 +1,7 @@
-
-
- 
- /* A helper for pretty-stringifying results */
-[@bs.val] external prettyStringify: ('a, Js.Nullable.t(unit), int) => string = "JSON.stringify";
+/* A helper for pretty-stringifying results */
+[@bs.val]
+external prettyStringify: ('a, Js.Nullable.t(unit), int) => string =
+  "JSON.stringify";
 
 let appId = "9b3ce1e5-c9e8-400c-85eb-a88de769c3e7";
 
@@ -14,40 +13,47 @@ module Client = {
       (),
     );
 
-    let auth = OneGraphAuth.create(authConfig);
+  let auth = OneGraphAuth.create(authConfig);
 
-    /* Create an InMemoryCache */
-    let inMemoryCache = ApolloInMemoryCache.createInMemoryCache();
+  /* Create an InMemoryCache */
+  let inMemoryCache = ApolloInMemoryCache.createInMemoryCache();
 
-    /* Create an HTTP Link */
-    let httpLink =
-    ApolloLinks.createHttpLink(~uri="https://serve.onegraph.com/graphql?app_id=" ++ appId, ());
+  /* Create an HTTP Link */
+  let httpLink =
+    ApolloLinks.createHttpLink(
+      ~uri="https://serve.onegraph.com/graphql?app_id=" ++ appId,
+      (),
+    );
 
-    /* Dynamically generate the authorization header on every request*/
-    let headerContextLink =
-        ApolloLinks.createContextLink(() =>
-        {
-            "headers": {
-            "authorization":
-                switch (Js.Nullable.toOption(OneGraphAuth.accessToken(auth))) {
-                | None => ""
-                | Some(token) => "Bearer " ++ token##accessToken
-                },
+  /* Dynamically generate the authorization header on every request*/
+  let headerContextLink =
+    ApolloLinks.createContextLink(() =>
+      {
+        "headers": {
+          "authorization":
+            switch (Js.Nullable.toOption(OneGraphAuth.accessToken(auth))) {
+            | None => ""
+            | Some(token) => "Bearer " ++ token##accessToken
             },
-        });
+        },
+      }
+    );
 
-    let client = ReasonApollo.createApolloClient(
-        ~link=ApolloLinks.from([|headerContextLink, httpLink|]),
-        ~cache=inMemoryCache,
-        ());
+  let client =
+    ReasonApollo.createApolloClient(
+      ~link=ApolloLinks.from([|headerContextLink, httpLink|]),
+      ~cache=inMemoryCache,
+      (),
+    );
 };
 
-module UnnamedQuery1QueryConfig = [%graphql {|
+module UnnamedQuery1QueryConfig = [%graphql
+  {|
   # Consider giving this query a unique, descriptive
   # name in your application as a best practice
   query unnamedQuery1 {
     rss {
-      rss2Feed(url: "") {
+      rss2Feed(url: "https://www.heavybit.com/category/library/podcasts/jamstack-radio/feed") {
         category
         description
         link
@@ -69,18 +75,24 @@ module UnnamedQuery1QueryConfig = [%graphql {|
 |}
 ];
 
-module UnnamedQuery1Query = ReasonApolloHooks.Query.Make(UnnamedQuery1QueryConfig);
+module UnnamedQuery1Query =
+  ReasonApolloHooks.Query.Make(UnnamedQuery1QueryConfig);
 
-module UnnamedQuery1 {
+module UnnamedQuery1 = {
   [@react.component]
   let make = () => {
     open React;
-    let variables = UnnamedQuery1QueryConfig.make( ())##variables;
-  
+    let variables = UnnamedQuery1QueryConfig.make()##variables;
+
     /* Both variant and records available */
     let (_simple, full) =
-      UnnamedQuery1Query.use(~fetchPolicy=NetworkOnly, ~errorPolicy=All, ~variables, ());
-  
+      UnnamedQuery1Query.use(
+        ~fetchPolicy=NetworkOnly,
+        ~errorPolicy=All,
+        ~variables,
+        (),
+      );
+
     switch (full) {
     | {loading: true} => <p> {string("Loading...")} </p>
     | {data, error, refetch} =>
@@ -89,56 +101,79 @@ module UnnamedQuery1 {
       let dataEl =
         data->Belt.Option.mapWithDefault(string("No data"), jsonify);
       let errorEl = error->Belt.Option.mapWithDefault(null, jsonify);
-  
+      // Js.log(data.rss.rss2Feed);
+
+      let title =
+        Belt.Option.(
+          data
+          ->map(data => data##rss)
+          ->map(rss => rss##rss2Feed)
+          ->map(rss2Feed => rss2Feed##title)
+        );
+      let items =
+        Belt.Option.(
+          data
+          ->map(data => data##rss)
+          ->map(rss => rss##rss2Feed)
+          ->map(rss2Feed => rss2Feed##items)
+        );
+
       <div>
+        <div> {Belt.Option.getWithDefault(title, "")->React.string} </div>
+        <div>
+          {items
+           ->Belt.Option.getWithDefault([||])
+           ->Belt.Array.map(item =>
+               <iframe src={item##link->Belt.Option.getWithDefault("")} />
+             )
+           ->React.array}
+        </div>
         dataEl
         errorEl
         <button
-          onClick=(
-            (_event) =>
-              switch (OneGraphAuth.findMissingAuthServices(Client.auth, error)) {
-              | [] => refetch()->ignore
-              | [serviceName, ..._otherServices] =>
-                  serviceName
-                  ->OneGraphAuth.login(Client.auth, _)
-                  ->Js.Promise.then_(
-                      () => OneGraphAuth.isLoggedIn(Client.auth, serviceName),
-                      _,
-                    )
-                  ->Js.Promise.then_(
-                      loginSuccess =>
-                        switch (loginSuccess) {
-                        | false =>
-                          Js.log2(
-                            "The user did not grant auth to ",
-                            serviceName,
-                          )
-                          ->Js.Promise.resolve
-                        | true =>
-                          Js.log2("Successfully logged into ", serviceName);
-                          refetch()->ignore->Js.Promise.resolve;
-                        },
-                      _,
-                    )
-                  ->ignore
-              }
-          )>
+          onClick={_event =>
+            switch (OneGraphAuth.findMissingAuthServices(Client.auth, error)) {
+            | [] => refetch()->ignore
+            | [serviceName, ..._otherServices] =>
+              serviceName
+              ->OneGraphAuth.login(Client.auth, _)
+              ->Js.Promise.then_(
+                  () => OneGraphAuth.isLoggedIn(Client.auth, serviceName),
+                  _,
+                )
+              ->Js.Promise.then_(
+                  loginSuccess =>
+                    switch (loginSuccess) {
+                    | false =>
+                      Js.log2("The user did not grant auth to ", serviceName)
+                      ->Js.Promise.resolve
+                    | true =>
+                      Js.log2("Successfully logged into ", serviceName);
+                      refetch()->ignore->Js.Promise.resolve;
+                    },
+                  _,
+                )
+              ->ignore
+            }
+          }>
           {string("Rerun UnnamedQuery1Query")}
         </button>
       </div>;
     };
-  }  
-}
- 
- let style = ReactDOMRe.Style.make;
-    
-    ReactDOMRe.renderToElementWithId(
-      <ReasonApolloHooks.ApolloProvider client=Client.client>
-        <App greeting="Hello, ReasonConf Dojo" />
-        
-      </ReasonApolloHooks.ApolloProvider>,
-      "index1",
-    );
+  };
+};
 
+module Podcast = {
+  [@react.component]
+  let make = () => <UnnamedQuery1 />;
+};
 
+let style = ReactDOMRe.Style.make;
 
+ReactDOMRe.renderToElementWithId(
+  <ReasonApolloHooks.ApolloProvider client=Client.client>
+    <App greeting="Hello, ReasonConf Dojo" />
+    <Podcast />
+  </ReasonApolloHooks.ApolloProvider>,
+  "index1",
+);
