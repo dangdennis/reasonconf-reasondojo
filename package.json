@@ -1,5 +1,5 @@
 {
-  "name": "reason-container",
+  "name": "reasondojo",
   "version": "0.1.0",
   "scripts": {
     "build": "bsb -make-world",
@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "webpack": "webpack -w",
     "webpack:production": "NODE_ENV=production webpack",
-    "server": "webpack-dev-server"
+    "server": "webpack-dev-server",
+    "introspection": "yarn send-introspection-query https://serve.onegraph.com/graphql?app_id=9b3ce1e5-c9e8-400c-85eb-a88de769c3e7"
   },
   "keywords": [
     "BuckleScript"
@@ -18,21 +19,22 @@
   "dependencies": {
     "@apollo/react-hooks": "^3.0.1",
     "antd": "^3.22.2",
-    "onegraph-auth": "2.0.1",
+    "onegraph-auth": "2.0.6",
     "react": "^16.8.1",
     "react-dom": "^16.8.1",
     "reason-apollo": "^0.17.0",
-    "reason-apollo-hooks": "^2.5.1",
+    "reason-apollo-hooks": "^2.7.1",
     "reason-react": ">=0.7.0",
     "graphql": "^14.0.2"
   },
   "devDependencies": {
+    "bs-onegraph-auth": "0.0.5",
     "bs-platform": "^5.0.6",
     "html-webpack-plugin": "^3.2.0",
     "webpack": "^4.0.1",
     "webpack-cli": "^3.1.1",
     "webpack-dev-server": "^3.1.8",
     "reason-cli": "3.3.3-macos-1",
-    "graphql_ppx": "^0.2.0"
+    "graphql_ppx": "^0.2.8"
   }
 }

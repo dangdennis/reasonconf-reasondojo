@@ -15,7 +15,8 @@
   ],
   "suffix": ".bs.js",
   "namespace": true,
-  "bs-dependencies": ["reason-react", "reason-apollo", "reason-apollo-hooks"],
+  "bs-dependencies": ["bs-onegraph-auth", "reason-react", "reason-apollo", "reason-apollo-hooks"],
   "ppx-flags": ["graphql_ppx/ppx"],
   "refmt": 3
 }
+
